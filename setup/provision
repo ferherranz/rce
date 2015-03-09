@@ -73,14 +73,16 @@ _BASE_PREP = 'curl python-setuptools python-dev'
 # Packages which are installed in the host filesystem
 # TODO: package 'linux-headers-virtual' is transitional
 _HOST_PKGS = ('lxc debootstrap python-openssl python-imaging '
-              'ros-{ros}-ros-comm ros-{ros}-common-msgs')
-              # TODO: package openvswitch has changed since 12.04
-              #' linux-headers-virtual '
-              #'openvswitch-datapath-source openvswitch-datapath-dkms '
-              #'openvswitch-common openvswitch-switch openvswitch-brcompat')
+              'ros-{ros}-ros-comm ros-{ros}-common-msgs '
+	      'openvswitch-datapath-source openvswitch-datapath-dkms '
+              'openvswitch-common openvswitch-switch')
+
 
 # Packages which are installed in the container filesystem
-_CONTAINER_PKGS = 'git-core ros-{ros}-ros-comm ros-{ros}-common-msgs'
+# Packages to resolve unmet dependecies
+_CONTAINER_PKGS = 'file libexpat1 libmagic1 libpython-stdlib libpython2.7-minimal libpython2.7-stdlib mime-support python python-minimal python2.7 python2.7-minimal'
+# ROS and GIT Packages
+_CONTAINER_PKGS_GIT_ROS = 'git-core ros-{ros}-ros-comm ros-{ros}-common-msgs'
 
 # Mapping of supported ROS releases and supported Ubuntu releases
 _SUPPORT_VERSIONS = {'precise' : ['fuerte', 'groovy', 'hydro'],
@@ -315,14 +317,13 @@ def provision_container(config):
     """
     host_pkgs = _HOST_PKGS.format(ros=config.host_ros_release)
     container_pkgs = _CONTAINER_PKGS.format(ros=config.container_ros_release)
-
+    container_pkgs_git_ros = _CONTAINER_PKGS_GIT_ROS.format(ros=config.container_ros_release)
     # Install the packages in the host filesystem
     cmds = (_INSTALL.format(_BASE_PREP),
             _ROS_SRC.format(base=get_host_ubuntu_release()),
             _ROS_KEY,
-            _INSTALL.format(host_pkgs))
-            # TODO: package openvswitch has changed since 12.04
-            #, 'sudo /etc/init.d/openvswitch-switch start')
+            _INSTALL.format(host_pkgs), 
+	    'sudo /etc/init.d/openvswitch-switch start')
 
     for cmd in cmds:
         check_call(cmd, shell=True)
@@ -342,6 +343,7 @@ def provision_container(config):
         _ROS_SRC.format(base=config.container_ubuntu_release),
         _ROS_KEY,
         _INSTALL.format(container_pkgs),
+	_INSTALL.format(container_pkgs_git_ros),
         'mkdir -p /tmp/rapyuta && cd /tmp/rapyuta && sudo rm -rf rce && '
         'git clone -b master https://github.com/rapyuta/rce.git && '
         'cd rce && sudo sh install.sh',
